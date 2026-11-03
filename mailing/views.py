@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.views.generic import (
     ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
 )
+from django.db.models import Q
 
 from .models import Client, Message, Mailing
 from .forms import ClientForm, MessageForm, MailingForm
@@ -19,11 +20,6 @@ from .services import send_mailing
 # ============================================================
 
 class OwnerRequiredMixin:
-    """Проверяет, что пользователь — владелец объекта.
-
-    Менеджеры и суперюзеры НЕ могут редактировать/удалять чужое.
-    """
-
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return self.handle_no_permission()
@@ -40,8 +36,34 @@ class OwnerRequiredMixin:
 # ============================================================
 
 class HomeView(TemplateView):
-    """Главная — заглушка (счётчики на шаге 10)."""
+    """Главная страница со счётчиками."""
     template_name = 'mailing/home.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        user = self.request.user
+
+        # Если не авторизован — показываем общую статистику по всем (или 0)
+        if not user.is_authenticated:
+            context['total_mailings'] = Mailing.objects.count()
+            context['active_mailings'] = Mailing.objects.filter(status=Mailing.STATUS_STARTED).count()
+            context['unique_recipients'] = Client.objects.count()
+            return context
+
+        # Если менеджер или суперюзер — видит всё
+        if user.is_manager or user.is_superuser:
+            qs_mailings = Mailing.objects.all()
+            qs_clients = Client.objects.all()
+        else:
+            qs_mailings = Mailing.objects.filter(owner=user)
+            qs_clients = Client.objects.filter(owner=user)
+
+        context['total_mailings'] = qs_mailings.count()
+        context['active_mailings'] = qs_mailings.filter(status=Mailing.STATUS_STARTED).count()
+        context['unique_recipients'] = qs_clients.count()
+
+        return context
 
 
 # ============================================================
@@ -260,8 +282,6 @@ class MailingDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
 
 
 class MailingSendView(LoginRequiredMixin, View):
-    """Отправка рассылки вручную (кнопка «Запустить»)."""
-
     def post(self, request, pk):
         try:
             mailing = Mailing.objects.get(pk=pk)
