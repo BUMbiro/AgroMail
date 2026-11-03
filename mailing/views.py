@@ -2,11 +2,20 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.urls import reverse_lazy
 from django.views.generic import (
-    ListView, DetailView, CreateView, UpdateView, DeleteView
+    ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
 )
 
 from .models import Client, Message, Mailing
 from .forms import ClientForm, MessageForm, MailingForm
+
+
+# ============================================================
+# Главная страница (пока заглушка, расширим на шаге 7)
+# ============================================================
+
+class HomeView(TemplateView):
+    """Главная страница — заглушка. Счётчики добавим на шаге 7."""
+    template_name = 'mailing/home.html'
 
 
 # ============================================================
@@ -178,7 +187,6 @@ class MailingCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        # Ограничиваем выбор message/recipients владельцем
         kwargs['user'] = self.request.user
         return kwargs
 
