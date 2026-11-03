@@ -5,7 +5,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def _load_env_file(path):
-    """Простой парсер .env: читает KEY=VALUE и выставляет их в os.environ."""
     if not path.exists():
         return
     with open(path, encoding='utf-8') as f:
@@ -17,13 +16,9 @@ def _load_env_file(path):
             os.environ.setdefault(key.strip(), value.strip())
 
 
-# Загружаем переменные из .env
 _load_env_file(BASE_DIR / '.env')
 
-# Секретный ключ из .env
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key')
-
-# DEBUG из .env
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = []
@@ -69,7 +64,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# PostgreSQL
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -94,19 +88,16 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Медиа
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Кастомная модель пользователя
 AUTH_USER_MODEL = 'accounts.User'
 
-# Email — консольный backend для dev
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'noreply@agromail.local'
 
-# Куда редиректить неавторизованных
 LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'mailing:home'
 LOGOUT_REDIRECT_URL = 'mailing:home'
@@ -128,3 +119,9 @@ CACHES = {
         'TIMEOUT': 300,
     }
 }
+
+# TTL для разных типов страниц (в секундах)
+CACHE_TTL_HOME = 300      # главная (5 минут)
+CACHE_TTL_LIST = 120      # списки (2 минуты)
+CACHE_TTL_DETAIL = 300    # детальные (5 минут)
+CACHE_TTL_STATS = 300     # статистика (5 минут)

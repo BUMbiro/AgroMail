@@ -9,17 +9,12 @@ from django.contrib import messages
 from django.views.generic import (
     ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
 )
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
+from django.conf import settings
 
 from .models import Client, Message, Mailing, MailingAttempt
 from .forms import ClientForm, MessageForm, MailingForm
 from .services import send_mailing
 
-
-# ============================================================
-# Миксин для проверки прав (только владелец)
-# ============================================================
 
 class OwnerRequiredMixin:
     def dispatch(self, request, *args, **kwargs):
@@ -34,18 +29,16 @@ class OwnerRequiredMixin:
 
 
 # ============================================================
-# Главная с кэшированием счётчиков
+# Главная (с кэшем)
 # ============================================================
 
 class HomeView(TemplateView):
-    """Главная страница со счётчиками. Счётчики кэшируются в Redis."""
     template_name = 'mailing/home.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
 
-        # Ключ кэша зависит от роли (чтобы менеджер видел свою статистику)
         if user.is_authenticated:
             if user.is_manager or user.is_superuser:
                 cache_key = 'home_stats_manager'
@@ -54,11 +47,9 @@ class HomeView(TemplateView):
         else:
             cache_key = 'home_stats_anonymous'
 
-        # Пытаемся взять из кэша
         stats = cache.get(cache_key)
 
         if stats is None:
-            # Если кэша нет — считаем и кладём
             if not user.is_authenticated:
                 total = Mailing.objects.count()
                 active = Mailing.objects.filter(status=Mailing.STATUS_STARTED).count()
@@ -78,21 +69,19 @@ class HomeView(TemplateView):
                 'active_mailings': active,
                 'unique_recipients': recipients,
             }
-            # TTL = 300 секунд (5 минут) — берётся из settings.CACHES['TIMEOUT']
-            cache.set(cache_key, stats, timeout=300)
+            cache.set(cache_key, stats, timeout=settings.CACHE_TTL_HOME)
 
         context.update(stats)
         return context
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
-        # Клиентское кэширование: браузер кэширует на 60 секунд
         response['Cache-Control'] = 'public, max-age=60'
         return response
 
 
 # ============================================================
-# Клиенты
+# Клиенты (с кэшем списков и детальных)
 # ============================================================
 
 class ClientListView(LoginRequiredMixin, ListView):
@@ -329,29 +318,55 @@ class MailingSendView(LoginRequiredMixin, View):
 
 
 # ============================================================
-# Статистика
+# Статистика (с кэшем)
 # ============================================================
 
 class StatisticsView(LoginRequiredMixin, TemplateView):
-    """Статистика по рассылкам и попыткам."""
     template_name = 'mailing/statistics.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
 
+        # Кэш для статистики (только счётчики, не таблица)
         if user.is_manager or user.is_superuser:
-            qs_mailings = Mailing.objects.all()
+            cache_key = 'stats_manager'
+        else:
+            cache_key = f'stats_user_{user.pk}'
+
+        stats = cache.get(cache_key)
+
+        if stats is None:
+            if user.is_manager or user.is_superuser:
+                qs_mailings = Mailing.objects.all()
+                qs_attempts = MailingAttempt.objects.all()
+            else:
+                qs_mailings = Mailing.objects.filter(owner=user)
+                qs_attempts = MailingAttempt.objects.filter(mailing__owner=user)
+
+            stats = {
+                'total_mailings': qs_mailings.count(),
+                'total_attempts': qs_attempts.count(),
+                'success_attempts': qs_attempts.filter(status=MailingAttempt.STATUS_SUCCESS).count(),
+                'failed_attempts': qs_attempts.filter(status=MailingAttempt.STATUS_FAILED).count(),
+            }
+            cache.set(cache_key, stats, timeout=settings.CACHE_TTL_STATS)
+
+        context.update(stats)
+
+        # Таблицу не кэшируем (она обновляется часто)
+        if user.is_manager or user.is_superuser:
             qs_attempts = MailingAttempt.objects.all()
         else:
-            qs_mailings = Mailing.objects.filter(owner=user)
             qs_attempts = MailingAttempt.objects.filter(mailing__owner=user)
 
-        context['total_mailings'] = qs_mailings.count()
-        context['total_attempts'] = qs_attempts.count()
-        context['success_attempts'] = qs_attempts.filter(status=MailingAttempt.STATUS_SUCCESS).count()
-        context['failed_attempts'] = qs_attempts.filter(status=MailingAttempt.STATUS_FAILED).count()
-
-        context['recent_attempts'] = qs_attempts.select_related('mailing', 'mailing__message').order_by('-attempt_time')[:20]
+        context['recent_attempts'] = qs_attempts.select_related(
+            'mailing', 'mailing__message'
+        ).order_by('-attempt_time')[:20]
 
         return context
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        response['Cache-Control'] = 'private, max-age=60'
+        return response
