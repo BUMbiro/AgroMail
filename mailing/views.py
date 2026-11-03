@@ -1,13 +1,17 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.exceptions import PermissionDenied
+from django.shortcuts import redirect
 from django.urls import reverse_lazy
+from django.views import View
+from django.contrib import messages
 from django.views.generic import (
     ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
 )
 
 from .models import Client, Message, Mailing
 from .forms import ClientForm, MessageForm, MailingForm
+from .services import send_mailing
 
 
 # ============================================================
@@ -253,3 +257,27 @@ class MailingDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
 
     def get_queryset(self):
         return Mailing.objects.filter(owner=self.request.user)
+
+
+class MailingSendView(LoginRequiredMixin, View):
+    """Отправка рассылки вручную (кнопка «Запустить»)."""
+
+    def post(self, request, pk):
+        try:
+            mailing = Mailing.objects.get(pk=pk)
+        except Mailing.DoesNotExist:
+            messages.error(request, 'Рассылка не найдена.')
+            return redirect('mailing:mailing_list')
+
+        if mailing.owner != request.user and not (request.user.is_manager or request.user.is_superuser):
+            messages.error(request, 'У вас нет прав на отправку этой рассылки.')
+            return redirect('mailing:mailing_list')
+
+        result = send_mailing(mailing.pk)
+
+        if result['success']:
+            messages.success(request, result['message'])
+        else:
+            messages.error(request, result['message'])
+
+        return redirect('mailing:mailing_detail', pk=mailing.pk)
