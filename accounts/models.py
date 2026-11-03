@@ -8,7 +8,7 @@ class User(AbstractUser):
     """Кастомная модель пользователя.
 
     Вход по email (USERNAME_FIELD), username генерируется автоматически.
-    Доп. поля: avatar, phone_number, country, is_email_verified.
+    Доп. поля: avatar, phone_number, country, region, city, is_email_verified.
     """
 
     email = models.EmailField(
@@ -30,6 +30,16 @@ class User(AbstractUser):
         max_length=100,
         blank=True,
         verbose_name='Страна',
+    )
+    region = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name='Район',
+    )
+    city = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name='Город',
     )
     is_email_verified = models.BooleanField(
         default=False,
