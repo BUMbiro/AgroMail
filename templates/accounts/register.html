@@ -6,28 +6,53 @@
 <div class="row justify-content-center mt-5">
     <div class="col-md-5">
         <div class="card p-4">
-            <h2 class="text-center mb-4">Регистрация</h2>
+            <h2 class="text-center mb-4 section-title">Регистрация</h2>
             <form method="post">
                 {% csrf_token %}
                 {% if form.non_field_errors %}
                     <div class="alert alert-danger">{{ form.non_field_errors }}</div>
                 {% endif %}
+
                 {% for field in form %}
                     <div class="mb-3">
                         <label class="form-label">{{ field.label }}</label>
-                        {{ field }}
+
+                        {# Для полей пароля — оборачиваем в relative-контейнер для "глазика" #}
+                        {% if field.name == 'password1' or field.name == 'password2' %}
+                            <div class="position-relative">
+                                {{ field }}
+                                <i class="bi bi-eye password-toggle"></i>
+                            </div>
+                        {% else %}
+                            {{ field }}
+                        {% endif %}
+
                         {% if field.errors %}
                             <div class="text-danger small">{{ field.errors }}</div>
                         {% endif %}
-                        {% if field.help_text %}
-                            <div class="form-text small">{{ field.help_text|safe }}</div>
+
+                        {# Выводим все 4 требования для password1 #}
+                        {% if field.name == 'password1' %}
+                            <div class="form-text small text-muted mt-2">
+                                <ul class="mb-0 ps-3">
+                                    <li>Пароль не должен быть слишком похож на другую вашу личную информацию.</li>
+                                    <li>Пароль должен содержать минимум 8 символов, включая цифры и знаки препинания.</li>
+                                    <li>Пароль не должен быть слишком простым и распространенным.</li>
+                                    <li>Пароль не может состоять только из цифр.</li>
+                                </ul>
+                            </div>
                         {% endif %}
+
                     </div>
                 {% endfor %}
-                <button type="submit" class="btn btn-primary w-100">Зарегистрироваться</button>
+
+                <button type="submit" class="btn btn-primary w-100 mt-3">Зарегистрироваться</button>
+                <p class="text-muted small mt-3 text-center">
+                    📧 После регистрации нужно подтвердить email (письмо появится в консоли).
+                </p>
             </form>
             <p class="text-center mt-3">
-                Уже есть аккаунт? <a href="{% url 'accounts:login' %}">Войти</a>
+                Уже есть аккаунт? <a href="{% url 'accounts:login' %}" class="btn-link">Войти</a>
             </p>
         </div>
     </div>
