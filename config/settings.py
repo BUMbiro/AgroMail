@@ -108,6 +108,8 @@ DEFAULT_FROM_EMAIL = 'noreply@agromail.local'
 
 # Куда редиректить неавторизованных
 LOGIN_URL = 'accounts:login'
+LOGIN_REDIRECT_URL = 'mailing:home'
+LOGOUT_REDIRECT_URL = 'mailing:home'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

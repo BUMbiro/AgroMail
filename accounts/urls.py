@@ -1,10 +1,12 @@
 from django.urls import path
-from django.http import HttpResponse
+
+from . import views
 
 app_name = 'accounts'
 
 urlpatterns = [
-    path('login/', lambda r: HttpResponse('Страница входа (заглушка)'), name='login'),
-    path('logout/', lambda r: HttpResponse('Выход (заглушка)'), name='logout'),
-    path('register/', lambda r: HttpResponse('Регистрация (заглушка)'), name='register'),
+    path('register/', views.RegisterView.as_view(), name='register'),
+    path('login/', views.LoginView.as_view(), name='login'),
+    path('logout/', views.LogoutView.as_view(), name='logout'),
+    path('profile/', views.ProfileView.as_view(), name='profile'),
 ]

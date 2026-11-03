@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Регистрация — АгроПочта{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card p-4">
+            <h2 class="text-center mb-4">Регистрация</h2>
+            <form method="post">
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                {% endif %}
+                {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                            <div class="text-danger small">{{ field.errors }}</div>
+                        {% endif %}
+                        {% if field.help_text %}
+                            <div class="form-text small">{{ field.help_text|safe }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary w-100">Зарегистрироваться</button>
+            </form>
+            <p class="text-center mt-3">
+                Уже есть аккаунт? <a href="{% url 'accounts:login' %}">Войти</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

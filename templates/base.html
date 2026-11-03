@@ -31,7 +31,7 @@
                         <li class="nav-item"><a class="nav-link" href="{% url 'mailing:client_list' %}">Клиенты</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'mailing:message_list' %}">Сообщения</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'mailing:mailing_list' %}">Рассылки</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#">👤 {{ user.email }}</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'accounts:profile' %}">👤 {{ user.email }}</a></li>
                         <li class="nav-item"><a class="nav-link" href="{% url 'accounts:logout' %}">Выйти</a></li>
                     {% else %}
                         <li class="nav-item"><a class="nav-link" href="{% url 'accounts:login' %}">Войти</a></li>
