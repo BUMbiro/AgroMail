@@ -1,5 +1,6 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
+from django.core.exceptions import PermissionDenied
 from django.urls import reverse_lazy
 from django.views.generic import (
     ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
@@ -10,11 +11,32 @@ from .forms import ClientForm, MessageForm, MailingForm
 
 
 # ============================================================
-# Главная страница (пока заглушка, расширим на шаге 7)
+# Миксин для проверки прав (только владелец)
+# ============================================================
+
+class OwnerRequiredMixin:
+    """Проверяет, что пользователь — владелец объекта.
+
+    Менеджеры и суперюзеры НЕ могут редактировать/удалять чужое.
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+
+        obj = self.get_object()
+        if obj.owner != request.user and not request.user.is_superuser:
+            raise PermissionDenied('У вас нет прав на управление этим объектом.')
+
+        return super().dispatch(request, *args, **kwargs)
+
+
+# ============================================================
+# Главная
 # ============================================================
 
 class HomeView(TemplateView):
-    """Главная страница — заглушка. Счётчики добавим на шаге 7."""
+    """Главная — заглушка (счётчики на шаге 10)."""
     template_name = 'mailing/home.html'
 
 
@@ -23,28 +45,31 @@ class HomeView(TemplateView):
 # ============================================================
 
 class ClientListView(LoginRequiredMixin, ListView):
-    """Список клиентов текущего пользователя."""
     model = Client
     template_name = 'mailing/client_list.html'
     context_object_name = 'clients'
     paginate_by = 10
 
     def get_queryset(self):
-        return Client.objects.filter(owner=self.request.user)
+        user = self.request.user
+        if user.is_manager or user.is_superuser:
+            return Client.objects.all()
+        return Client.objects.filter(owner=user)
 
 
 class ClientDetailView(LoginRequiredMixin, DetailView):
-    """Детальная клиента."""
     model = Client
     template_name = 'mailing/client_detail.html'
     context_object_name = 'client'
 
     def get_queryset(self):
-        return Client.objects.filter(owner=self.request.user)
+        user = self.request.user
+        if user.is_manager or user.is_superuser:
+            return Client.objects.all()
+        return Client.objects.filter(owner=user)
 
 
 class ClientCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
-    """Создание клиента."""
     model = Client
     form_class = ClientForm
     template_name = 'mailing/client_form.html'
@@ -58,8 +83,7 @@ class ClientCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
         return reverse_lazy('mailing:client_detail', kwargs={'pk': self.object.pk})
 
 
-class ClientUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
-    """Редактирование клиента."""
+class ClientUpdateView(LoginRequiredMixin, OwnerRequiredMixin, SuccessMessageMixin, UpdateView):
     model = Client
     form_class = ClientForm
     template_name = 'mailing/client_form.html'
@@ -72,8 +96,7 @@ class ClientUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         return reverse_lazy('mailing:client_detail', kwargs={'pk': self.object.pk})
 
 
-class ClientDeleteView(LoginRequiredMixin, DeleteView):
-    """Удаление клиента."""
+class ClientDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
     model = Client
     template_name = 'mailing/client_confirm_delete.html'
     context_object_name = 'client'
@@ -88,28 +111,31 @@ class ClientDeleteView(LoginRequiredMixin, DeleteView):
 # ============================================================
 
 class MessageListView(LoginRequiredMixin, ListView):
-    """Список сообщений текущего пользователя."""
     model = Message
     template_name = 'mailing/message_list.html'
     context_object_name = 'messages'
     paginate_by = 10
 
     def get_queryset(self):
-        return Message.objects.filter(owner=self.request.user)
+        user = self.request.user
+        if user.is_manager or user.is_superuser:
+            return Message.objects.all()
+        return Message.objects.filter(owner=user)
 
 
 class MessageDetailView(LoginRequiredMixin, DetailView):
-    """Детальная сообщения."""
     model = Message
     template_name = 'mailing/message_detail.html'
     context_object_name = 'message'
 
     def get_queryset(self):
-        return Message.objects.filter(owner=self.request.user)
+        user = self.request.user
+        if user.is_manager or user.is_superuser:
+            return Message.objects.all()
+        return Message.objects.filter(owner=user)
 
 
 class MessageCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
-    """Создание сообщения."""
     model = Message
     form_class = MessageForm
     template_name = 'mailing/message_form.html'
@@ -123,8 +149,7 @@ class MessageCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
         return reverse_lazy('mailing:message_detail', kwargs={'pk': self.object.pk})
 
 
-class MessageUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
-    """Редактирование сообщения."""
+class MessageUpdateView(LoginRequiredMixin, OwnerRequiredMixin, SuccessMessageMixin, UpdateView):
     model = Message
     form_class = MessageForm
     template_name = 'mailing/message_form.html'
@@ -137,8 +162,7 @@ class MessageUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         return reverse_lazy('mailing:message_detail', kwargs={'pk': self.object.pk})
 
 
-class MessageDeleteView(LoginRequiredMixin, DeleteView):
-    """Удаление сообщения."""
+class MessageDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
     model = Message
     template_name = 'mailing/message_confirm_delete.html'
     context_object_name = 'message'
@@ -153,24 +177,30 @@ class MessageDeleteView(LoginRequiredMixin, DeleteView):
 # ============================================================
 
 class MailingListView(LoginRequiredMixin, ListView):
-    """Список рассылок текущего пользователя."""
     model = Mailing
     template_name = 'mailing/mailing_list.html'
     context_object_name = 'mailings'
     paginate_by = 10
 
     def get_queryset(self):
-        return Mailing.objects.filter(owner=self.request.user).select_related('message')
+        user = self.request.user
+        qs = Mailing.objects.select_related('message')
+        if user.is_manager or user.is_superuser:
+            return qs
+        return qs.filter(owner=user)
 
 
 class MailingDetailView(LoginRequiredMixin, DetailView):
-    """Детальная рассылки. Пересчитывает статус через update_status()."""
     model = Mailing
     template_name = 'mailing/mailing_detail.html'
     context_object_name = 'mailing'
 
     def get_queryset(self):
-        return Mailing.objects.filter(owner=self.request.user)
+        user = self.request.user
+        qs = Mailing.objects.select_related('message')
+        if user.is_manager or user.is_superuser:
+            return qs
+        return qs.filter(owner=user)
 
     def get_object(self, queryset=None):
         obj = super().get_object(queryset)
@@ -179,7 +209,6 @@ class MailingDetailView(LoginRequiredMixin, DetailView):
 
 
 class MailingCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
-    """Создание рассылки."""
     model = Mailing
     form_class = MailingForm
     template_name = 'mailing/mailing_form.html'
@@ -198,8 +227,7 @@ class MailingCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
         return reverse_lazy('mailing:mailing_detail', kwargs={'pk': self.object.pk})
 
 
-class MailingUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
-    """Редактирование рассылки."""
+class MailingUpdateView(LoginRequiredMixin, OwnerRequiredMixin, SuccessMessageMixin, UpdateView):
     model = Mailing
     form_class = MailingForm
     template_name = 'mailing/mailing_form.html'
@@ -217,8 +245,7 @@ class MailingUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         return reverse_lazy('mailing:mailing_detail', kwargs={'pk': self.object.pk})
 
 
-class MailingDeleteView(LoginRequiredMixin, DeleteView):
-    """Удаление рассылки."""
+class MailingDeleteView(LoginRequiredMixin, OwnerRequiredMixin, DeleteView):
     model = Mailing
     template_name = 'mailing/mailing_confirm_delete.html'
     context_object_name = 'mailing'
