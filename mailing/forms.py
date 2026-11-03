@@ -11,14 +11,8 @@ class MailingForm(forms.ModelForm):
         model = Mailing
         fields = ['start_time', 'end_time', 'message', 'recipients']
         widgets = {
-            'start_time': forms.DateTimeInput(attrs={
-                'type': 'datetime-local',
-                'class': 'form-control',
-            }),
-            'end_time': forms.DateTimeInput(attrs={
-                'type': 'datetime-local',
-                'class': 'form-control',
-            }),
+            'start_time': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+            'end_time': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
             'message': forms.Select(attrs={'class': 'form-select'}),
             'recipients': forms.SelectMultiple(attrs={'class': 'form-select', 'size': 5}),
         }
@@ -29,15 +23,22 @@ class MailingForm(forms.ModelForm):
             'recipients': 'Получатели',
         }
 
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        # Ограничиваем выбор сообщений/получателей владельцем
+        if self.user:
+            self.fields['message'].queryset = Message.objects.filter(owner=self.user)
+            self.fields['recipients'].queryset = Client.objects.filter(owner=self.user)
+
     def clean_start_time(self):
-        """start_time не в прошлом."""
         start_time = self.cleaned_data.get('start_time')
         if start_time and start_time < timezone.now():
             raise forms.ValidationError('Дата начала не может быть в прошлом.')
         return start_time
 
     def clean(self):
-        """start_time < end_time."""
         cleaned_data = super().clean()
         start_time = cleaned_data.get('start_time')
         end_time = cleaned_data.get('end_time')
