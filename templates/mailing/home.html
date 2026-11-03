@@ -37,6 +37,16 @@
     </div>
 </div>
 
+{% if user.is_authenticated %}
+<div class="row mt-2 mb-5 text-center">
+    <div class="col-12">
+        <a href="{% url 'mailing:statistics' %}" class="btn btn-primary btn-lg px-5">
+            📊 Посмотреть полную статистику
+        </a>
+    </div>
+</div>
+{% endif %}
+
 <div class="row mt-4 text-center">
     <div class="col-12">
         <h3 class="section-title mb-4">Разделы</h3>

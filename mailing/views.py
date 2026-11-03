@@ -8,9 +8,8 @@ from django.contrib import messages
 from django.views.generic import (
     ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
 )
-from django.db.models import Q
 
-from .models import Client, Message, Mailing
+from .models import Client, Message, Mailing, MailingAttempt
 from .forms import ClientForm, MessageForm, MailingForm
 from .services import send_mailing
 
@@ -41,17 +40,14 @@ class HomeView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-
         user = self.request.user
 
-        # Если не авторизован — показываем общую статистику по всем (или 0)
         if not user.is_authenticated:
             context['total_mailings'] = Mailing.objects.count()
             context['active_mailings'] = Mailing.objects.filter(status=Mailing.STATUS_STARTED).count()
             context['unique_recipients'] = Client.objects.count()
             return context
 
-        # Если менеджер или суперюзер — видит всё
         if user.is_manager or user.is_superuser:
             qs_mailings = Mailing.objects.all()
             qs_clients = Client.objects.all()
@@ -301,3 +297,32 @@ class MailingSendView(LoginRequiredMixin, View):
             messages.error(request, result['message'])
 
         return redirect('mailing:mailing_detail', pk=mailing.pk)
+
+
+# ============================================================
+# Статистика
+# ============================================================
+
+class StatisticsView(LoginRequiredMixin, TemplateView):
+    """Статистика по рассылкам и попыткам."""
+    template_name = 'mailing/statistics.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+
+        if user.is_manager or user.is_superuser:
+            qs_mailings = Mailing.objects.all()
+            qs_attempts = MailingAttempt.objects.all()
+        else:
+            qs_mailings = Mailing.objects.filter(owner=user)
+            qs_attempts = MailingAttempt.objects.filter(mailing__owner=user)
+
+        context['total_mailings'] = qs_mailings.count()
+        context['total_attempts'] = qs_attempts.count()
+        context['success_attempts'] = qs_attempts.filter(status=MailingAttempt.STATUS_SUCCESS).count()
+        context['failed_attempts'] = qs_attempts.filter(status=MailingAttempt.STATUS_FAILED).count()
+
+        context['recent_attempts'] = qs_attempts.select_related('mailing', 'mailing__message').order_by('-attempt_time')[:20]
+
+        return context

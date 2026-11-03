@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Статистика — АгроПочта{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <h2 class="section-title mb-4">Статистика</h2>
+    </div>
+</div>
+
+<div class="row text-center mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 p-3">
+            <h3 class="fw-bold">{{ total_mailings }}</h3>
+            <p class="text-muted mb-0">Всего рассылок</p>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 p-3">
+            <h3 class="fw-bold">{{ total_attempts }}</h3>
+            <p class="text-muted mb-0">Всего попыток</p>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 p-3" style="border-top: 4px solid #2d6a4f;">
+            <h3 class="fw-bold text-success">{{ success_attempts }}</h3>
+            <p class="text-muted mb-0">Успешных</p>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 p-3" style="border-top: 4px solid #8b0000;">
+            <h3 class="fw-bold text-danger">{{ failed_attempts }}</h3>
+            <p class="text-muted mb-0">Неуспешных</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <h4 class="section-title mb-3">Последние 20 попыток</h4>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Рассылка</th>
+                        <th>Статус</th>
+                        <th>Ответ сервера</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for attempt in recent_attempts %}
+                        <tr>
+                            <td>{{ attempt.attempt_time|date:"d.m.Y H:i" }}</td>
+                            <td>#{{ attempt.mailing.pk }} — {{ attempt.mailing.message.subject|truncatechars:30 }}</td>
+                            <td>
+                                {% if attempt.status == 'Успешно' %}
+                                    <span class="badge bg-success">{{ attempt.status }}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ attempt.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ attempt.server_response|truncatechars:60 }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="4" class="text-center text-muted">Попыток пока не было</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
