@@ -1,5 +1,6 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
@@ -8,6 +9,8 @@ from django.contrib import messages
 from django.views.generic import (
     ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView
 )
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 
 from .models import Client, Message, Mailing, MailingAttempt
 from .forms import ClientForm, MessageForm, MailingForm
@@ -31,35 +34,61 @@ class OwnerRequiredMixin:
 
 
 # ============================================================
-# Главная
+# Главная с кэшированием счётчиков
 # ============================================================
 
 class HomeView(TemplateView):
-    """Главная страница со счётчиками."""
+    """Главная страница со счётчиками. Счётчики кэшируются в Redis."""
     template_name = 'mailing/home.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
 
-        if not user.is_authenticated:
-            context['total_mailings'] = Mailing.objects.count()
-            context['active_mailings'] = Mailing.objects.filter(status=Mailing.STATUS_STARTED).count()
-            context['unique_recipients'] = Client.objects.count()
-            return context
-
-        if user.is_manager or user.is_superuser:
-            qs_mailings = Mailing.objects.all()
-            qs_clients = Client.objects.all()
+        # Ключ кэша зависит от роли (чтобы менеджер видел свою статистику)
+        if user.is_authenticated:
+            if user.is_manager or user.is_superuser:
+                cache_key = 'home_stats_manager'
+            else:
+                cache_key = f'home_stats_user_{user.pk}'
         else:
-            qs_mailings = Mailing.objects.filter(owner=user)
-            qs_clients = Client.objects.filter(owner=user)
+            cache_key = 'home_stats_anonymous'
 
-        context['total_mailings'] = qs_mailings.count()
-        context['active_mailings'] = qs_mailings.filter(status=Mailing.STATUS_STARTED).count()
-        context['unique_recipients'] = qs_clients.count()
+        # Пытаемся взять из кэша
+        stats = cache.get(cache_key)
 
+        if stats is None:
+            # Если кэша нет — считаем и кладём
+            if not user.is_authenticated:
+                total = Mailing.objects.count()
+                active = Mailing.objects.filter(status=Mailing.STATUS_STARTED).count()
+                recipients = Client.objects.count()
+            elif user.is_manager or user.is_superuser:
+                total = Mailing.objects.count()
+                active = Mailing.objects.filter(status=Mailing.STATUS_STARTED).count()
+                recipients = Client.objects.count()
+            else:
+                user_mailings = Mailing.objects.filter(owner=user)
+                total = user_mailings.count()
+                active = user_mailings.filter(status=Mailing.STATUS_STARTED).count()
+                recipients = Client.objects.filter(owner=user).count()
+
+            stats = {
+                'total_mailings': total,
+                'active_mailings': active,
+                'unique_recipients': recipients,
+            }
+            # TTL = 300 секунд (5 минут) — берётся из settings.CACHES['TIMEOUT']
+            cache.set(cache_key, stats, timeout=300)
+
+        context.update(stats)
         return context
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        # Клиентское кэширование: браузер кэширует на 60 секунд
+        response['Cache-Control'] = 'public, max-age=60'
+        return response
 
 
 # ============================================================
