@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}{% if object %}Редактировать клиента{% else %}Новый клиент{% endif %} — АгроПочта{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card p-4">
+            <h2 class="text-center mb-4 section-title">
+                {% if object %}Редактировать клиента{% else %}Новый клиент{% endif %}
+            </h2>
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                            <div class="text-danger small">{{ field.errors }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary w-100">Сохранить</button>
+            </form>
+            <p class="text-center mt-3">
+                <a href="{% url 'mailing:client_list' %}" class="btn-link">← К списку клиентов</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

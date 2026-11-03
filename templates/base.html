@@ -13,6 +13,7 @@
             --agro-green-light: #2d6a4f;
             --agro-blue: #0077b6;
             --agro-bg: #f8f9fa;
+            --agro-gold: #ffc107;
         }
         body { background-color: var(--agro-bg); }
         .navbar { background-color: var(--agro-green) !important; }
@@ -20,6 +21,7 @@
         .nav-link { color: #d8f3dc !important; transition: color 0.2s; }
         .nav-link:hover { color: var(--agro-blue) !important; }
 
+        /* Основные кнопки */
         .btn-primary {
             background-color: var(--agro-green-light);
             border-color: var(--agro-green-light);
@@ -53,6 +55,7 @@
             color: var(--agro-green);
         }
 
+        /* Глазик для пароля */
         .password-toggle {
             position: absolute;
             right: 10px;
@@ -61,6 +64,24 @@
             cursor: pointer;
             color: var(--agro-green-light);
             z-index: 10;
+        }
+
+        /* Золотые иконки */
+        .icon-gold {
+            color: var(--agro-gold) !important;
+        }
+
+        /* Кнопка удаления (тёмно-красная, светлеет при наведении) */
+        .btn-agro-danger {
+            background-color: #8b0000; /* тёмно-красный */
+            color: #ffffff;
+            border: 1px solid #8b0000;
+            transition: all 0.2s ease;
+        }
+        .btn-agro-danger:hover {
+            background-color: #c82333; /* светлее */
+            color: #ffffff;
+            border-color: #c82333;
         }
     </style>
 </head>

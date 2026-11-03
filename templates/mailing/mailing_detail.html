@@ -71,6 +71,9 @@
                 {% else %}
                     <button class="btn btn-secondary" disabled>Отправка доступна только в интервале</button>
                 {% endif %}
+
+                <a href="{% url 'mailing:mailing_update' mailing.pk %}" class="btn btn-outline-primary">✏️</a>
+                <a href="{% url 'mailing:mailing_delete' mailing.pk %}" class="btn btn-agro-danger">🗑</a>
             </div>
         </div>
     </div>
