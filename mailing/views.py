@@ -16,6 +16,23 @@ from .forms import ClientForm, MessageForm, MailingForm
 from .services import send_mailing
 
 
+# ============================================================
+# Хелпер для сброса кэша
+# ============================================================
+
+def _invalidate_stats_cache(user):
+    """Сбрасывает кэш статистики для пользователя/менеджера."""
+    if user.is_manager or user.is_superuser:
+        cache.delete('home_stats_manager')
+        cache.delete('stats_manager')
+    cache.delete(f'home_stats_user_{user.pk}')
+    cache.delete(f'stats_user_{user.pk}')
+
+
+# ============================================================
+# Миксин для проверки прав (только владелец)
+# ============================================================
+
 class OwnerRequiredMixin:
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -76,12 +93,16 @@ class HomeView(TemplateView):
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
-        response['Cache-Control'] = 'public, max-age=60'
+        # Приватный кэш для авторизованных (у них разные данные)
+        if request.user.is_authenticated:
+            response['Cache-Control'] = 'private, max-age=60'
+        else:
+            response['Cache-Control'] = 'public, max-age=60'
         return response
 
 
 # ============================================================
-# Клиенты (с кэшем списков и детальных)
+# Клиенты
 # ============================================================
 
 class ClientListView(LoginRequiredMixin, ListView):
@@ -117,7 +138,9 @@ class ClientCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.owner = self.request.user
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        _invalidate_stats_cache(self.request.user)
+        return response
 
     def get_success_url(self):
         return reverse_lazy('mailing:client_detail', kwargs={'pk': self.object.pk})
@@ -261,7 +284,9 @@ class MailingCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.owner = self.request.user
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        _invalidate_stats_cache(self.request.user)
+        return response
 
     def get_success_url(self):
         return reverse_lazy('mailing:mailing_detail', kwargs={'pk': self.object.pk})
@@ -309,6 +334,9 @@ class MailingSendView(LoginRequiredMixin, View):
 
         result = send_mailing(mailing.pk)
 
+        # Сбрасываем кэш статистики после отправки
+        _invalidate_stats_cache(request.user)
+
         if result['success']:
             messages.success(request, result['message'])
         else:
@@ -328,7 +356,6 @@ class StatisticsView(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         user = self.request.user
 
-        # Кэш для статистики (только счётчики, не таблица)
         if user.is_manager or user.is_superuser:
             cache_key = 'stats_manager'
         else:
@@ -354,7 +381,6 @@ class StatisticsView(LoginRequiredMixin, TemplateView):
 
         context.update(stats)
 
-        # Таблицу не кэшируем (она обновляется часто)
         if user.is_manager or user.is_superuser:
             qs_attempts = MailingAttempt.objects.all()
         else:

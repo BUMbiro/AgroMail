@@ -21,7 +21,11 @@ _load_env_file(BASE_DIR / '.env')
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+# ALLOWED_HOSTS из окружения
+ALLOWED_HOSTS = os.getenv(
+    'ALLOWED_HOSTS',
+    'localhost,127.0.0.1',
+).split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -120,8 +124,7 @@ CACHES = {
     }
 }
 
-# TTL для разных типов страниц (в секундах)
-CACHE_TTL_HOME = 300      # главная (5 минут)
-CACHE_TTL_LIST = 120      # списки (2 минуты)
-CACHE_TTL_DETAIL = 300    # детальные (5 минут)
-CACHE_TTL_STATS = 300     # статистика (5 минут)
+CACHE_TTL_HOME = 300
+CACHE_TTL_LIST = 120
+CACHE_TTL_DETAIL = 300
+CACHE_TTL_STATS = 300
