@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Профиль — АгроПочта{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card p-4">
+            <h2 class="text-center mb-4 section-title">Личный кабинет</h2>
+
+            <div class="text-center mb-4">
+                {% if user.avatar %}
+                    <img src="{{ user.avatar.url }}" alt="Аватар" class="rounded-circle mb-2" style="width: 120px; height: 120px; object-fit: cover;">
+                {% else %}
+                    <span style="font-size: 5rem;">👨‍🌾</span>
+                {% endif %}
+                <h4 class="mt-2">{{ user.email }}</h4>
+                <p class="text-muted mb-1">
+                    {% if user.is_superuser %}Суперюзер{% elif user.is_manager %}Менеджер{% else %}Пользователь{% endif %}
+                </p>
+                {% if user.region or user.city %}
+                    <p class="text-muted small">
+                        📍 {{ user.city }}{% if user.city and user.region %}, {% endif %}{{ user.region }}
+                    </p>
+                {% endif %}
+            </div>
+
+            <ul class="list-group list-group-flush mb-4">
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    Клиенты
+                    <span class="badge bg-primary rounded-pill">{{ user.clients.count }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    Сообщения
+                    <span class="badge bg-primary rounded-pill">{{ user.messages.count }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    Рассылки
+                    <span class="badge bg-primary rounded-pill">{{ user.mailings.count }}</span>
+                </li>
+            </ul>
+
+            <div class="d-grid gap-2">
+                <a href="{% url 'accounts:profile_edit' %}" class="btn btn-primary">✏️ Редактировать профиль</a>
+                <a href="{% url 'mailing:home' %}" class="btn btn-outline-primary">На главную</a>
+                <a href="{% url 'accounts:logout' %}" class="btn btn-danger">Выйти</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

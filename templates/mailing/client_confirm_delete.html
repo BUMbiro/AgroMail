@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Удалить клиента — АгроПочта{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card p-4">
+            <h2 class="text-center mb-4 section-title">Удалить клиента?</h2>
+            <p class="text-center">Вы уверены, что хотите удалить клиента <strong>{{ client.full_name }}</strong> ({{ client.email }})?</p>
+            <form method="post" class="text-center">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-agro-danger">Да, удалить</button>
+                <a href="{% url 'mailing:client_list' %}" class="btn btn-secondary">Отмена</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

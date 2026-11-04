@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}{{ message.subject }} — АгроПочта{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card p-4">
+            <h2 class="section-title">{{ message.subject }}</h2>
+            <p><strong>Тело письма:</strong></p>
+            <div class="border rounded p-3 bg-light mb-3">{{ message.body|linebreaks }}</div>
+            <p class="text-muted small">Создано: {{ message.created_at|date:"d.m.Y H:i" }}</p>
+
+            <div class="d-flex gap-2 mt-3">
+                <a href="{% url 'mailing:message_list' %}" class="btn btn-outline-primary">← К списку</a>
+                <a href="{% url 'mailing:message_update' message.pk %}" class="btn btn-primary">✏️ Редактировать</a>
+                <a href="{% url 'mailing:message_delete' message.pk %}" class="btn btn-agro-danger">🗑 Удалить</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
