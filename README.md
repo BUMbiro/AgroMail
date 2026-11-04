@@ -101,6 +101,8 @@ cp .env.template .env    # Windows: copy .env.template .env
 SECRET_KEY=ваш_секретный_ключ
 DEBUG=True
 
+ALLOWED_HOSTS=localhost,127.0.0.1
+
 DB_NAME=agromail
 DB_USER=agromail_user
 DB_PASSWORD=ваш_пароль
@@ -256,8 +258,12 @@ python manage.py create_manager_group
   - Главная: ключ `home_stats_user_<id>`, TTL = 300 секунд.
   - Статистика: ключ `stats_user_<id>`, TTL = 300 секунд.
   - Настройка в `config/settings.py` → `CACHES` (база `/1`, порт `6380`).
-- **Клиентское** — заголовок `Cache-Control: public, max-age=60` для главной и статистики, `max-age=31536000` 
-для статики.
+- **Клиентское** — заголовок `Cache-Control`:
+  - `private, max-age=60` — для авторизованных пользователей (персональные данные).
+  - `public, max-age=60` — для анонимов.
+  - `max-age=31536000` — для статики.
+- **Сброс кэша** — после создания/изменения/отправки рассылки кэш статистики сбрасывается автоматически 
+(`_invalidate_stats_cache`).
 
 Проверка:
 ```bash
